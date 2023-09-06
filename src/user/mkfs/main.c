@@ -38,7 +38,8 @@ struct xv6_stat;
 #define NINDIRECT     INODE_NUM_INDIRECT
 #define DIRSIZ        FILE_NAME_MAX_LENGTH
 #define IPB           (BSIZE / sizeof(InodeEntry))
-#define IBLOCK(i, sb) ((i) / IPB + sb.inode_start)
+// 定位第i个inode位于哪个块
+#define IBLOCK(i, sb) ((i) / IPB + sb.inode_start + recordBase)
 
 int nbitmap = FSSIZE / (BSIZE * 8) + 1;
 int ninodeblocks = NINODES / IPB + 1;
@@ -79,6 +80,32 @@ uint xint(uint x) {
     return y;
 }
 
+void printDirEntry(uint inum){
+    struct dinode din;
+    rinode(inum, &din);
+    char * buf[BLOCK_SIZE];
+    
+    int i = 0;
+    printf("\n\n\nprintDirEntry start!\n");
+    bool flag = false;
+    for (; i < INODE_NUM_DIRECT; i++)
+    {
+        rsect(din.addrs[i], buf);
+        printf("In O.N. %d block\n", i);
+        for (int j = 0; j <= (BSIZE / sizeof(DirEntry)); j++)
+        {
+            DirEntry * de = ((DirEntry *)buf) + j;
+            if(de->inode_no == 0){
+                flag = true;
+                break;
+            } 
+            printf("\tN.O. %d entry is : name = %s, ino = %d\n", j, de->name, de->inode_no);
+        }
+        if(flag) break;
+    }
+    printf("\n\n\nprintDirEntry end!\n");
+}
+
 int main(int argc, char *argv[]) {
     int i, cc, fd;
     uint rootino, inum, off;
@@ -102,35 +129,38 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    // 1 fs block = 1 disk sector
-    nmeta = 2 + num_log_blocks + ninodeblocks + nbitmap;
-    num_data_blocks = FSSIZE - nmeta;
+    sb.num_blocks = xint(cylinderSize);
+    sb.num_data_blocks = xint(cylinderDBSize);
+    sb.num_inodes = xint(cylinderInodeSize);
+    sb.num_log_blocks = xint(logSize);
+    sb.log_start = xint(1);
+    sb.inode_start = xint(cylinderInodeBase);
+    sb.bitmap_start = xint(cylinderBitmapBase);
 
-    sb.num_blocks = xint(FSSIZE);
-    sb.num_data_blocks = xint(num_data_blocks);
-    sb.num_inodes = xint(NINODES);
-    sb.num_log_blocks = xint(num_log_blocks);
-    sb.log_start = xint(2);
-    sb.inode_start = xint(2 + num_log_blocks);
-    sb.bitmap_start = xint(2 + num_log_blocks + ninodeblocks);
+    freeblock = recordBase + cylinderDBBase;
 
-    printf("nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) blocks %d "
-           "total %d\n",
-           nmeta,
-           num_log_blocks,
-           ninodeblocks,
-           nbitmap,
-           num_data_blocks,
-           FSSIZE);
+    // printf("nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) blocks %d "
+    //        "total %d\n",
+    //        nmeta,
+    //        num_log_blocks,
+    //        ninodeblocks,
+    //        nbitmap,
+    //        num_data_blocks,
+    //        FSSIZE);
 
-    freeblock = nmeta;  // the first free block that we can allocate
+    // freeblock = nmeta;  // the first free block that we can allocate
 
-    for (i = 0; i < FSSIZE; i++)
-        wsect(i, zeroes);
+    // 清空磁盘
+    for (int j = 0; j < FSSIZE; j++)
+        wsect(j, zeroes);
 
     memset(buf, 0, sizeof(buf));
     memmove(buf, &sb, sizeof(sb));
-    wsect(1, buf);
+    
+    // 将SB写入到磁盘，在每个柱面组开始的地方
+    for(int j = 0; j < cylinderGroupNum; j ++){
+        wsect(recordBase + j * cylinderSize, buf);
+    }
 
     rootino = ialloc(INODE_DIRECTORY);
     assert(rootino == ROOT_INODE_NO);
@@ -191,6 +221,8 @@ int main(int argc, char *argv[]) {
     winode(rootino, &din);
 
     balloc(freeblock);
+
+    printDirEntry(rootino);
 
     exit(0);
 }
@@ -282,6 +314,7 @@ void iappend(uint inum, void *xp, int n) {
     while (n > 0) {
         fbn = off / BSIZE;
         assert(fbn < INODE_MAX_BLOCKS);
+        // x为指向的数据块号
         if (fbn < NDIRECT) {
             if (xint(din.addrs[fbn]) == 0) {
                 din.addrs[fbn] = xint(freeblock++);

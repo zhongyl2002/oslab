@@ -30,6 +30,36 @@ typedef u16 InodeType;
 
 #define BIT_PER_BLOCK (BLOCK_SIZE * 8)
 
+
+// 柱面组的组成
+// [ SB | IB | BB | DB ]
+// 柱面组结构体
+#define logSize             63
+#define cylinderGroupNum    4       // 柱面组数量
+#define cylinderSize        936     // 一个柱面组的大小
+#define cylinderInodeBase   1       // Inode开始
+#define cylinderInodeSize   26      // Inode数量
+#define cylinderBitmapBase  27      // Bitmap开始
+#define cylinderBitmapSize  1       // Bitmap数量
+#define cylinderDBBase      28      // data block开始
+#define cylinderDBSize      908     // data block数量
+#define recordBase          64
+// mkfs only
+// Size of file system in blocks
+#define FSSIZE  1 + logSize + cylinderGroupNum * (1 + cylinderInodeSize + cylinderBitmapSize + cylinderDBSize)
+
+typedef struct {
+    u32 id;                 // 柱面组号
+    u32 freeInodes;         // 空闲的Inode数量
+} cylinderGroup;
+
+// BUG: 不懂为什么吧数组作为全局变量会报错，错误信息为：
+// multiple definition of `cylinderGroups'; CMakeFiles/kernel8.elf.dir/main.c.o:(.bss+0x0): first defined here
+// 没办法，只有封装成结构体
+typedef struct {
+    cylinderGroup cylinderGroups[cylinderGroupNum];
+} cgs;
+
 // disk layout:
 // [ MBR block | super block | log blocks | inode blocks | bitmap blocks | data blocks ]
 //
@@ -72,5 +102,3 @@ typedef struct {
     usize block_no[LOG_MAX_SIZE];
 } LogHeader;
 
-// mkfs only
-#define FSSIZE 1000  // Size of file system in blocks

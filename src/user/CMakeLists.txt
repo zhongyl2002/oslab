@@ -37,7 +37,8 @@ set(user_binary_list
 	echo
 	ls
 	mkdir
-	cat)
+	cat
+	catDisk)
 	# )
 
 foreach(binary ${user_binary_list})
