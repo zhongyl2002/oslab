@@ -22,12 +22,12 @@ static INLINE usize to_block_no(usize inode_no, usize gid) {
 // return the pointer to on-disk inode.
 static INLINE InodeEntry *get_entry(Block *block, usize inode_no) {
     return ((InodeEntry *)block->data) + (inode_no % INODE_PER_BLOCK);
-}
+}   //XXX
 
 // return address array in indirect block.
 static INLINE u32 *get_addrs(Block *block) {
     return ((IndirectBlock *)block->data)->addrs;
-}
+}  //XXX
 
 // used by `inode_map`.
 static INLINE void set_flag(bool *flag) {
@@ -46,10 +46,10 @@ void init_inodes(const SuperBlock *_sblock, const BlockCache *_cache) {
     init_arena(&arena, sizeof(Inode), allocator);
 
     if (ROOT_INODE_NO < sblock->num_inodes)
-        inodes.root = inodes.get(ROOT_INODE_NO);
+        inodes.root = inodes.get(ROOT_INODE_NO,0);
     else
         printf("(warn) init_inodes: no root inode.\n");
-}
+}   //???  Every group has a root inode?
 
 // initialize in-memory inode.
 static void init_inode(Inode *inode) {
@@ -58,51 +58,47 @@ static void init_inode(Inode *inode) {
     init_list_node(&inode->node);
     inode->inode_no = 0;
     inode->valid = false;
-}
+}  //XXX
 
 // 选择freeInode最多的组
-int selectGid(){
-    int ret;
-    for (int i = 1; i < cylinderGroupNum; i++)
+u64 selectGid(){
+    int ret=0;
+    for (int i = 0; i < cylinderGroupNum; i++)
     {
-        
+        int temp=getFreeinode(i);
+        if (temp>ret) ret=temp;
     }
-    
+    return ret;
 }
 
 // see `inode.h`.
 static usize inode_alloc(OpContext *ctx, InodeType type) {
     assert(type != INODE_INVALID);
 
-    usize gid = 0;
-    for (int i = 1; i < cylinderGroupNum; i++)
-    {
-        
-    }
+    usize gid = selectGid();
     
-
     for (usize ino = 1; ino < sblock->num_inodes; ino++) {
-        usize block_no = to_block_no(ino);
+        usize block_no = to_block_no(ino,gid);
         Block *block = cache->acquire(block_no);
         InodeEntry *inode = get_entry(block, ino);
 
         if (inode->type == INODE_INVALID) {
             memset(inode, 0, sizeof(InodeEntry));
             inode->type = type;
+            inode->inode_gid=gid;
             cache->sync(ctx, block);
             cache->release(block);
             return ino;
         }
-
         cache->release(block);
     }
 
     PANIC("failed to allocate inode on disk");
-}
+}   //GGG
 
 // see `inode.h`.
 static void inode_sync(OpContext *ctx, Inode *inode, bool do_write) {
-    usize block_no = to_block_no(inode->inode_no);
+    usize block_no = to_block_no(inode->inode_no,inode->entry.inode_gid);
     Block *block = cache->acquire(block_no);
     InodeEntry *entry = get_entry(block, inode->inode_no);
 
@@ -115,7 +111,7 @@ static void inode_sync(OpContext *ctx, Inode *inode, bool do_write) {
     }
 
     cache->release(block);
-}
+}   //GGG
 
 // see `inode.h`.
 static void inode_lock(Inode *inode) {
@@ -125,14 +121,14 @@ static void inode_lock(Inode *inode) {
     if (!inode->valid)
         inode_sync(NULL, inode, false);
     assert(inode->entry.type != INODE_INVALID);
-}
+}  //GGG
 
 // see `inode.h`.
 static void inode_unlock(Inode *inode) {
     assert(holding_spinlock(&inode->lock));
     assert(inode->rc.count > 0);
     release_spinlock(&inode->lock);
-}
+}  //XXX
 
 // see `inode.h`.
 static Inode *inode_get(usize inode_no, usize gid) {
@@ -143,7 +139,7 @@ static Inode *inode_get(usize inode_no, usize gid) {
     Inode *inode = NULL;
     for (ListNode *cur = head.next; cur != &head; cur = cur->next) {
         Inode *inst = container_of(cur, Inode, node);
-        if (inst->rc.count > 0 && inst->inode_no == inode_no) {
+        if (inst->rc.count > 0 && inst->inode_no == inode_no&&inst->entry.inode_gid==gid) {
             increment_rc(&inst->rc);
             inode = inst;
             break;
@@ -155,6 +151,7 @@ static Inode *inode_get(usize inode_no, usize gid) {
         assert(inode != NULL);
         init_inode(inode);
         inode->inode_no = inode_no;
+        inode->entry.inode_gid=gid;
         increment_rc(&inode->rc);
         merge_list(&head, &inode->node);
     }
@@ -162,7 +159,7 @@ static Inode *inode_get(usize inode_no, usize gid) {
     release_spinlock(&lock);
 
     return inode;
-}
+}  //GGG
 
 // see `inode.h`.
 static void inode_clear(OpContext *ctx, Inode *inode) {
@@ -191,7 +188,7 @@ static void inode_clear(OpContext *ctx, Inode *inode) {
 
     entry->num_bytes = 0;
     inode_sync(ctx, inode, true);
-}
+}  //XXX
 
 // see `inode.h`.
 static Inode *inode_share(Inode *inode) {
@@ -199,7 +196,7 @@ static Inode *inode_share(Inode *inode) {
     increment_rc(&inode->rc);
     release_spinlock(&lock);
     return inode;
-}
+} //XXX
 
 // see `inode.h`.
 static void inode_put(OpContext *ctx, Inode *inode) {
@@ -223,7 +220,7 @@ static void inode_put(OpContext *ctx, Inode *inode) {
         free_object(inode);
     }
     release_spinlock(&lock);
-}
+} //XXX
 
 // this function is private to inode layer, because it can allocate block
 // at arbitrary offset, which breaks the usual file abstraction.
@@ -267,7 +264,7 @@ static usize inode_map(OpContext *ctx, Inode *inode, usize offset, bool *modifie
     usize addr = addrs[index];
     cache->release(block);
     return addr;
-}
+}  //XXX
 
 // see `inode.h`.
 static usize inode_read(Inode *inode, u8 *dest, usize offset, usize count) {
@@ -298,7 +295,7 @@ static usize inode_read(Inode *inode, u8 *dest, usize offset, usize count) {
         cache->release(block);
     }
     return count;
-}
+}  //XXX
 
 // see `inode.h`.
 static usize inode_write(OpContext *ctx, Inode *inode, u8 *src, usize offset, usize count) {
@@ -349,7 +346,7 @@ static usize inode_lookup(Inode *inode, const char *name, usize *index) {
     }
 
     return 0;
-}
+} //XXX
 
 // see `inode.h`.
 static usize inode_insert(OpContext *ctx, Inode *inode, const char *name, usize inode_no) {
@@ -368,7 +365,7 @@ static usize inode_insert(OpContext *ctx, Inode *inode, const char *name, usize 
     strncpy(dentry.name, name, FILE_NAME_MAX_LENGTH);
     inode_write(ctx, inode, (u8 *)&dentry, offset, sizeof(dentry));
     return offset / sizeof(dentry);
-}
+} //XXX
 
 // see `inode.h`.
 static void inode_remove(OpContext *ctx, Inode *inode, usize index) {
@@ -382,7 +379,7 @@ static void inode_remove(OpContext *ctx, Inode *inode, usize index) {
 
     memset(&dentry, 0, sizeof(dentry));
     inode_write(ctx, inode, (u8 *)&dentry, offset, sizeof(dentry));
-}
+} //XXX
 
 /* Paths. */
 
@@ -420,7 +417,7 @@ static const char *skipelem(const char *path, char *name) {
     while (*path == '/')
         path++;
     return path;
-}
+}  //XXX
 
 /* Look up and return the inode for a path name.
  *
@@ -432,7 +429,7 @@ static Inode *namex(const char *path, int nameiparent, char *name, OpContext *ct
     Inode *ip, *next;
 
     if (*path == '/')
-        ip = inodes.get(1);
+        ip = inodes.get(1,0);
     else
         ip = inodes.share(thiscpu()->proc->cwd);
 
@@ -459,7 +456,7 @@ static Inode *namex(const char *path, int nameiparent, char *name, OpContext *ct
             inodes.put(ctx, ip);
             return 0;
         }
-        next = inodes.get(inodes.lookup(ip, name, 0));
+        next = inodes.get(inodes.lookup(ip, name, 0),0);
         inodes.unlock(ip);
         inodes.put(ctx, ip);
         ip = next;

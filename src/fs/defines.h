@@ -49,7 +49,7 @@ typedef u16 InodeType;
 #define FSSIZE  1 + logSize + cylinderGroupNum * (1 + cylinderInodeSize + cylinderBitmapSize + cylinderDBSize)
 
 typedef struct {
-    u32 id;                 // 柱面组号
+    u64 id;                 // 柱面组号
     u32 freeInodes;         // 空闲的Inode数量
 } cylinderGroup;
 
@@ -76,7 +76,8 @@ typedef struct dinode {
     u16 major;                    // major device id, for INODE_DEVICE only.
     u16 minor;                    // minor device id, for INODE_DEVICE only.
     u16 num_links;                // number of hard links to this inode in the filesystem.
-    u32 num_bytes;                // number of bytes in the file, i.e. the size of file.
+    u16 inode_gid;
+    u16 num_bytes;                // number of bytes in the file, i.e. the size of file.
     u32 addrs[INODE_NUM_DIRECT];  // direct addresses/block numbers.
     u32 indirect;                 // the indirect address block.
 } InodeEntry;
