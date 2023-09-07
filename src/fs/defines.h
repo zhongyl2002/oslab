@@ -44,9 +44,16 @@ typedef u16 InodeType;
 #define cylinderDBBase      28      // data block开始
 #define cylinderDBSize      908     // data block数量
 #define recordBase          64
+// 每个柱面组inode数量 8 * 26
+#define inodePerCylinder    ((BLOCK_SIZE / sizeof(InodeEntry)) * cylinderInodeSize)
 // mkfs only
 // Size of file system in blocks
 #define FSSIZE  1 + logSize + cylinderGroupNum * (1 + cylinderInodeSize + cylinderBitmapSize + cylinderDBSize)
+
+typedef struct {
+    u16 type;
+    u16 pid;
+} tp;
 
 typedef struct {
     u32 id;                 // 柱面组号

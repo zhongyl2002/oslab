@@ -222,7 +222,9 @@ Inode *create(char *path, short type, short major, short minor, OpContext *ctx) 
         inodes.put(ctx, ip);
         return 0;
     }
-    if ((ip = inodes.get(inodes.alloc(ctx, (u16)type))) == 0) {
+    // TAP = type and parent inode id
+    tp TAP = {type, dp->inode_no};
+    if ((ip = inodes.get(inodes.alloc(ctx, TAP))) == 0) {
         PANIC("create: inodes.alloc");
     }
     inodes.lock(ip);

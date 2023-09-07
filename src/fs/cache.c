@@ -337,28 +337,31 @@ static void cache_end_op(OpContext *ctx) {
 
 // see `cache.h`.
 // hint: you can use `cache_acquire`/`cache_sync` to read/write blocks.
-static usize cache_alloc(OpContext *ctx, usize gid) {
-    for (usize i = 0; i < sblock->num_blocks; i += BIT_PER_BLOCK) {
-        usize block_no = recordBase + gid * cylinderSize + sblock->bitmap_start + (i / BIT_PER_BLOCK);
-        Block *block = cache_acquire(block_no);
+static usize cache_alloc(OpContext *ctx) {
+    for (int gid = 0; gid < cylinderGroupNum; gid++)
+    {
+        for (usize i = 0; i < sblock->num_blocks; i += BIT_PER_BLOCK) {
+            usize block_no = recordBase + gid * cylinderSize + sblock->bitmap_start + (i / BIT_PER_BLOCK);
+            Block *block = cache_acquire(block_no);
 
-        BitmapCell *bitmap = (BitmapCell *)block->data;
-        for (usize j = 0; j < BIT_PER_BLOCK && i + j < sblock->num_blocks; j++) {
-            if (!bitmap_get(bitmap, j)) {
-                bitmap_set(bitmap, j);
-                cache_sync(ctx, block);
-                cache_release(block);
+            BitmapCell *bitmap = (BitmapCell *)block->data;
+            for (usize j = 0; j < BIT_PER_BLOCK && i + j < sblock->num_blocks; j++) {
+                if (!bitmap_get(bitmap, j)) {
+                    bitmap_set(bitmap, j);
+                    cache_sync(ctx, block);
+                    cache_release(block);
 
-                block_no = recordBase + gid * cylinderSize + (i + j);
-                block = cache_acquire(block_no);
-                memset(block->data, 0, BLOCK_SIZE);
-                cache_sync(ctx, block);
-                cache_release(block);
-                return block_no;
+                    block_no = recordBase + gid * cylinderSize + (i + j);
+                    block = cache_acquire(block_no);
+                    memset(block->data, 0, BLOCK_SIZE);
+                    cache_sync(ctx, block);
+                    cache_release(block);
+                    return block_no;
+                }
             }
-        }
 
-        cache_release(block);
+            cache_release(block);
+        }
     }
 
     PANIC("cache_alloc: no free block");

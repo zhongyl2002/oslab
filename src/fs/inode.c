@@ -15,7 +15,8 @@ static const BlockCache *cache;
 static Arena arena;
 
 // return which block `inode_no` lives on.
-static INLINE usize to_block_no(usize inode_no, usize gid) {
+static INLINE usize to_block_no(usize inode_no) {
+    int gid = inode_no / inodePerCylinder;
     return recordBase + gid * cylinderSize + sblock->inode_start + (inode_no / (INODE_PER_BLOCK));
 }
 
@@ -60,41 +61,75 @@ static void init_inode(Inode *inode) {
     inode->valid = false;
 }
 
-// 选择freeInode最多的组
-int selectGid(){
-    int ret;
-    for (int i = 1; i < cylinderGroupNum; i++)
-    {
-        
-    }
-    
-}
-
 // see `inode.h`.
-static usize inode_alloc(OpContext *ctx, InodeType type) {
-    assert(type != INODE_INVALID);
+static usize inode_alloc(OpContext *ctx, tp tap) {
+    assert(tap.type != INODE_INVALID);
 
-    usize gid = 0;
-    for (int i = 1; i < cylinderGroupNum; i++)
-    {
-        
-    }
-    
-
-    for (usize ino = 1; ino < sblock->num_inodes; ino++) {
-        usize block_no = to_block_no(ino);
-        Block *block = cache->acquire(block_no);
-        InodeEntry *inode = get_entry(block, ino);
-
-        if (inode->type == INODE_INVALID) {
-            memset(inode, 0, sizeof(InodeEntry));
-            inode->type = type;
-            cache->sync(ctx, block);
-            cache->release(block);
-            return ino;
+    // 为目录分配inode节点
+    if(tap.type == INODE_DIRECTORY){
+        printf("In dir branch\n");
+        // inode数最多的组
+        int mmax = getFreeinode(0), bestG = 0;
+        for (int i = 1; i < cylinderGroupNum; i++)
+        {
+            int tmp = getFreeinode(i);
+            if(mmax < tmp){
+                mmax = tmp;
+                bestG = i;
+            }
         }
+        printf("bestG = %d, mmin = %d\n", bestG, mmax);
+        for (usize ino = inodePerCylinder * bestG; ino < inodePerCylinder * (bestG + 1); ino++) {
+            usize block_no = to_block_no(ino);
+            Block *block = cache->acquire(block_no);
+            InodeEntry *inode = get_entry(block, ino);
 
-        cache->release(block);
+            if (inode->type == INODE_INVALID) {
+                printf("find proper in iter %d\n", ino);
+                memset(inode, 0, sizeof(InodeEntry));
+                inode->type = tap.type;
+                cache->sync(ctx, block);
+                cache->release(block);
+                return ino;
+            }
+
+            cache->release(block);
+        }
+    }
+    // 为文件分配节点，tp.pid != 0
+    else if(tap.type == INODE_REGULAR){
+        int gid = tap.pid / inodePerCylinder;
+        for (usize ino = inodePerCylinder * gid; ino < inodePerCylinder * (gid + 1); ino++) {
+            usize block_no = to_block_no(ino);
+            Block *block = cache->acquire(block_no);
+            InodeEntry *inode = get_entry(block, ino);
+
+            if (inode->type == INODE_INVALID) {
+                memset(inode, 0, sizeof(InodeEntry));
+                inode->type = tap.type;
+                cache->sync(ctx, block);
+                cache->release(block);
+                return ino;
+            }
+
+            cache->release(block);
+        }
+    }else{
+        for (usize ino = 1; ino < inodePerCylinder; ino++) {
+            usize block_no = to_block_no(ino);
+            Block *block = cache->acquire(block_no);
+            InodeEntry *inode = get_entry(block, ino);
+
+            if (inode->type == INODE_INVALID) {
+                memset(inode, 0, sizeof(InodeEntry));
+                inode->type = tap.type;
+                cache->sync(ctx, block);
+                cache->release(block);
+                return ino;
+            }
+
+            cache->release(block);
+        }
     }
 
     PANIC("failed to allocate inode on disk");
@@ -135,7 +170,7 @@ static void inode_unlock(Inode *inode) {
 }
 
 // see `inode.h`.
-static Inode *inode_get(usize inode_no, usize gid) {
+static Inode *inode_get(usize inode_no) {
     assert(inode_no > 0);
     assert(inode_no < sblock->num_inodes);
     acquire_spinlock(&lock);

@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
 
     sb.num_blocks = xint(cylinderSize);
     sb.num_data_blocks = xint(cylinderDBSize);
-    sb.num_inodes = xint(cylinderInodeSize);
+    sb.num_inodes = xint(cylinderGroupNum * inodePerCylinder);
     sb.num_log_blocks = xint(logSize);
     sb.log_start = xint(1);
     sb.inode_start = xint(cylinderInodeBase);
@@ -258,6 +258,10 @@ int main(int argc, char *argv[]) {
             }
         }
         bitmap[(cylinderBitmapBase / 8)] |= (1 << (7 - (cylinderBitmapBase % 8)));
+        // 将所有的inode对应的bitmap设置为1
+        for (int j = 0; j < cylinderInodeSize; j++){
+            bitmap[(1 + j) / 8] |= (1 << (7 - ((1 + j) % 8)));
+        }
         wsect(recordBase + (i * cylinderSize) + cylinderBitmapBase, bitmap);
     }
     
