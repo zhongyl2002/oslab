@@ -14,6 +14,10 @@ Library `fs` is the filesystem.
     
     [ 超级块 | Inode块 | bitmap块 | 数据块 ]
 
+## 保持不变的地方
+
+读取块的方式不变，依旧是向底层发送读取块的block编号，即block地址
+
 ## 需要修改的地方
 
 1. 文件的放置

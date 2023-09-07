@@ -2,6 +2,8 @@
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "files.associations": {
         "fcntl.h": "c",
-        "*.tcc": "c"
+        "*.tcc": "c",
+        "block_device.h": "c",
+        "inode.h": "c"
     }
 }

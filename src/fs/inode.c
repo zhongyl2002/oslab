@@ -15,8 +15,8 @@ static const BlockCache *cache;
 static Arena arena;
 
 // return which block `inode_no` lives on.
-static INLINE usize to_block_no(usize inode_no) {
-    return sblock->inode_start + (inode_no / (INODE_PER_BLOCK));
+static INLINE usize to_block_no(usize inode_no, usize gid) {
+    return recordBase + gid * cylinderSize + sblock->inode_start + (inode_no / (INODE_PER_BLOCK));
 }
 
 // return the pointer to on-disk inode.
@@ -60,9 +60,26 @@ static void init_inode(Inode *inode) {
     inode->valid = false;
 }
 
+// 选择freeInode最多的组
+int selectGid(){
+    int ret;
+    for (int i = 1; i < cylinderGroupNum; i++)
+    {
+        
+    }
+    
+}
+
 // see `inode.h`.
 static usize inode_alloc(OpContext *ctx, InodeType type) {
     assert(type != INODE_INVALID);
+
+    usize gid = 0;
+    for (int i = 1; i < cylinderGroupNum; i++)
+    {
+        
+    }
+    
 
     for (usize ino = 1; ino < sblock->num_inodes; ino++) {
         usize block_no = to_block_no(ino);
@@ -118,7 +135,7 @@ static void inode_unlock(Inode *inode) {
 }
 
 // see `inode.h`.
-static Inode *inode_get(usize inode_no) {
+static Inode *inode_get(usize inode_no, usize gid) {
     assert(inode_no > 0);
     assert(inode_no < sblock->num_inodes);
     acquire_spinlock(&lock);

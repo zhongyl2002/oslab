@@ -16,3 +16,4 @@ extern BlockDevice block_device;
 
 void init_block_device();
 const SuperBlock *get_super_block();
+int getFreeinode(int id);

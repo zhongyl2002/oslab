@@ -58,6 +58,7 @@ void init_bcache(const SuperBlock *_sblock, const BlockDevice *_device) {
     last_allocated_ts = 0;
     last_persisted_ts = 0;
 
+    // 疑惑：为什么需要+1，而不是直接log_start
     log_start = sblock->log_start + 1;
     log_size = MIN(sblock->num_log_blocks - 1, LOG_MAX_SIZE);
     log_used = 0;
@@ -336,9 +337,9 @@ static void cache_end_op(OpContext *ctx) {
 
 // see `cache.h`.
 // hint: you can use `cache_acquire`/`cache_sync` to read/write blocks.
-static usize cache_alloc(OpContext *ctx) {
+static usize cache_alloc(OpContext *ctx, usize gid) {
     for (usize i = 0; i < sblock->num_blocks; i += BIT_PER_BLOCK) {
-        usize block_no = sblock->bitmap_start + (i / BIT_PER_BLOCK);
+        usize block_no = recordBase + gid * cylinderSize + sblock->bitmap_start + (i / BIT_PER_BLOCK);
         Block *block = cache_acquire(block_no);
 
         BitmapCell *bitmap = (BitmapCell *)block->data;
@@ -348,7 +349,7 @@ static usize cache_alloc(OpContext *ctx) {
                 cache_sync(ctx, block);
                 cache_release(block);
 
-                block_no = i + j;
+                block_no = recordBase + gid * cylinderSize + (i + j);
                 block = cache_acquire(block_no);
                 memset(block->data, 0, BLOCK_SIZE);
                 cache_sync(ctx, block);
@@ -367,7 +368,8 @@ static usize cache_alloc(OpContext *ctx) {
 // hint: you can use `cache_acquire`/`cache_sync` to read/write blocks.
 static void cache_free(OpContext *ctx, usize block_no) {
     usize i = block_no / BIT_PER_BLOCK, j = block_no % BIT_PER_BLOCK;
-    Block *block = cache_acquire(sblock->bitmap_start + i);
+    usize gid = (block_no - recordBase) / cylinderSize;
+    Block *block = cache_acquire(recordBase + gid * cylinderSize + sblock->bitmap_start + i);
 
     BitmapCell *bitmap = (BitmapCell *)block->data;
     assert(bitmap_get(bitmap, j));

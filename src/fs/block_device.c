@@ -25,7 +25,7 @@ BlockDevice block_device;
 
 void init_block_device() {
     sd_init();
-    sd_read(1, sblock_data);
+    sd_read(recordBase, sblock_data);
 
     block_device.read = sd_read;
     block_device.write = sd_write;
@@ -35,6 +35,21 @@ const SuperBlock *get_super_block() {
     return (const SuperBlock *)sblock_data;
 }
 
+int getFreeinode(int id){
+    u8 buf[BSIZE];
+    int ret = 0;
+    for (int i = 0; i < cylinderInodeSize; i++)
+    {
+        sd_read(recordBase + id * cylinderSize + cylinderInodeBase + i, buf);
+        for(int j = 0; j < INODE_PER_BLOCK; j ++){
+            InodeEntry* ie = ((InodeEntry*)buf) + j;
+            if(ie->num_links == 0){
+                ret ++;
+            }
+        }
+    }
+    return ret;    
+}
 
 /*
 总结：block_device.h、block_device.c文件

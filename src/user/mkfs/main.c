@@ -39,7 +39,7 @@ struct xv6_stat;
 #define DIRSIZ        FILE_NAME_MAX_LENGTH
 #define IPB           (BSIZE / sizeof(InodeEntry))
 // 定位第i个inode位于哪个块
-#define IBLOCK(i, sb) ((i) / IPB + sb.inode_start + recordBase)
+#define IBLOCK(i, sb) (((i) / IPB) + sb.inode_start + recordBase)
 
 int nbitmap = FSSIZE / (BSIZE * 8) + 1;
 int ninodeblocks = NINODES / IPB + 1;
@@ -106,6 +106,22 @@ void printDirEntry(uint inum){
     printf("\n\n\nprintDirEntry end!\n");
 }
 
+void printBitmap(int cyn){
+    printf("\n\n\nprintBitmap start\n");
+    uint8_t testbuf[BSIZE];
+    rsect(recordBase + cyn * cylinderSize + cylinderBitmapBase, testbuf);
+    for(int i = 0; i < BSIZE; i ++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if(testbuf[i] & (1 << (7 - j))){
+                printf("第%d(i = %d, j = %d)块被使用\n", i * 8 + j, i, j);
+            }
+        }
+    }
+    printf("\n\n\nprintBitmap end\n");
+}
+
 int main(int argc, char *argv[]) {
     int i, cc, fd;
     uint rootino, inum, off;
@@ -162,8 +178,10 @@ int main(int argc, char *argv[]) {
         wsect(recordBase + j * cylinderSize, buf);
     }
 
+    printf("\n\nroot node\n");
     rootino = ialloc(INODE_DIRECTORY);
     assert(rootino == ROOT_INODE_NO);
+    printf("root node end\n");
 
     bzero(&de, sizeof(de));
     de.inode_no = xshort(rootino);
@@ -223,6 +241,27 @@ int main(int argc, char *argv[]) {
     balloc(freeblock);
 
     printDirEntry(rootino);
+
+    // 设置bitmap
+    for (int i = 0; i < cylinderGroupNum; i++)
+    {
+        uint8_t bitmap[BSIZE];
+        rsect(recordBase + (i * cylinderSize) + cylinderBitmapBase, bitmap);
+        char testbuf[BSIZE];
+        for (int j = 0; j < cylinderSize; j++)
+        {
+            rsect(recordBase + (i * cylinderSize) + j, testbuf);
+            if(strcmp(testbuf, zeroes) != 0){
+                int byteIndex = (j / 8);
+                int bitIndex = 7 - (j % 8);
+                bitmap[byteIndex] |= (1 << bitIndex);
+            }
+        }
+        bitmap[(cylinderBitmapBase / 8)] |= (1 << (7 - (cylinderBitmapBase % 8)));
+        wsect(recordBase + (i * cylinderSize) + cylinderBitmapBase, bitmap);
+    }
+    
+    printBitmap(0);
 
     exit(0);
 }

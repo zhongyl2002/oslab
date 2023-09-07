@@ -53,12 +53,7 @@ typedef struct {
     u32 freeInodes;         // 空闲的Inode数量
 } cylinderGroup;
 
-// BUG: 不懂为什么吧数组作为全局变量会报错，错误信息为：
-// multiple definition of `cylinderGroups'; CMakeFiles/kernel8.elf.dir/main.c.o:(.bss+0x0): first defined here
-// 没办法，只有封装成结构体
-typedef struct {
-    cylinderGroup cylinderGroups[cylinderGroupNum];
-} cgs;
+static cylinderGroup cylinderGroups[cylinderGroupNum];
 
 // disk layout:
 // [ MBR block | super block | log blocks | inode blocks | bitmap blocks | data blocks ]
