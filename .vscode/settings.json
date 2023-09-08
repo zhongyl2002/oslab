@@ -38,6 +38,8 @@
         "system_error": "c",
         "thread": "c",
         "tuple": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "time.h": "c",
+        "syscall.h": "c"
     }
 }
