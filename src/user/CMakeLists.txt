@@ -39,7 +39,6 @@ set(user_binary_list
 	mkdir
 	cat
 	catDisk)
-	# )
 
 foreach(binary ${user_binary_list})
 	add_executable(${binary} ${CMAKE_CURRENT_SOURCE_DIR}/${binary}/main.c)

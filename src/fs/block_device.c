@@ -41,6 +41,7 @@ int getFreeinode(int id){
     for (int i = 0; i < cylinderInodeSize; i++)
     {
         sd_read(recordBase + id * cylinderSize + cylinderInodeBase + i, buf);
+        // printf("read %d block\n", recordBase + id * cylinderSize + cylinderInodeBase + i);
         for(int j = 0; j < INODE_PER_BLOCK; j ++){
             InodeEntry* ie = ((InodeEntry*)buf) + j;
             if(ie->num_links == 0){
@@ -48,8 +49,41 @@ int getFreeinode(int id){
             }
         }
     }
-    return ret;    
+    return ret;
 }
+
+void catInode(int blockNo){
+    printf("\n\nCatInode start block %d\n", blockNo);
+    char buf[512];
+    sd_read(blockNo, buf);
+    for(int j = 0; j < INODE_PER_BLOCK; j ++){
+        InodeEntry* ie = ((InodeEntry*)buf) + j;
+        printf("第%dinode节点:", j);
+        switch (ie->type)
+        {
+        case INODE_INVALID:
+            printf("type = INODE_INVALID, ");
+            break;
+        case INODE_DIRECTORY:
+            printf("type = INODE_DIRECTORY, ");
+            break;
+        case INODE_REGULAR:
+            printf("type = INODE_REGULAR, ");
+            break;
+        default:
+            printf("type = INODE_DEVICE, ");
+        }
+        printf("num_links = %d, num_bytes = %d\n\t", ie->num_links, ie->num_bytes);
+        for (int i = 0; i < INODE_NUM_DIRECT; i++)
+        {
+            printf("direct[%d] = %d ", ie->addrs[i]);
+        }
+        printf("\n\t");
+        printf("indirect = %d\n", ie->indirect);
+    }
+    printf("CatInode end\n");
+}
+
 
 /*
 总结：block_device.h、block_device.c文件

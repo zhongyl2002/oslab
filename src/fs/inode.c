@@ -17,7 +17,7 @@ static Arena arena;
 // return which block `inode_no` lives on.
 static INLINE usize to_block_no(usize inode_no) {
     int gid = inode_no / inodePerCylinder;
-    return recordBase + gid * cylinderSize + sblock->inode_start + (inode_no / (INODE_PER_BLOCK));
+    return recordBase + gid * cylinderSize + sblock->inode_start + ((inode_no % inodePerCylinder) / (INODE_PER_BLOCK));
 }
 
 // return the pointer to on-disk inode.
@@ -67,12 +67,14 @@ static usize inode_alloc(OpContext *ctx, tp tap) {
 
     // 为目录分配inode节点
     if(tap.type == INODE_DIRECTORY){
-        printf("In dir branch\n");
-        // inode数最多的组
+        // printf("In dir branch\n");
+        // inode空闲数最多的组
         int mmax = getFreeinode(0), bestG = 0;
+        printf("group 1 free num : %d\n", mmax);
         for (int i = 1; i < cylinderGroupNum; i++)
         {
             int tmp = getFreeinode(i);
+            printf("group %d free num : %d\n", i, tmp);
             if(mmax < tmp){
                 mmax = tmp;
                 bestG = i;
@@ -80,21 +82,27 @@ static usize inode_alloc(OpContext *ctx, tp tap) {
         }
         printf("bestG = %d, mmin = %d\n", bestG, mmax);
         for (usize ino = inodePerCylinder * bestG; ino < inodePerCylinder * (bestG + 1); ino++) {
+            // printf("inode = %d\n", ino);
             usize block_no = to_block_no(ino);
+            // printf("block_no = %d\n", block_no);
             Block *block = cache->acquire(block_no);
             InodeEntry *inode = get_entry(block, ino);
 
             if (inode->type == INODE_INVALID) {
-                printf("find proper in iter %d\n", ino);
+                // printf("find proper in iter %d\n", ino);
                 memset(inode, 0, sizeof(InodeEntry));
                 inode->type = tap.type;
-                cache->sync(ctx, block);
+                inode->num_links = 1;
+                cache->sync(NULL, block);
                 cache->release(block);
+                // catInode(recordBase + cylinderSize + cylinderInodeBase);
+                // catInode(block_no);
                 return ino;
             }
 
             cache->release(block);
         }
+
     }
     // 为文件分配节点，tp.pid != 0
     else if(tap.type == INODE_REGULAR){
@@ -109,6 +117,7 @@ static usize inode_alloc(OpContext *ctx, tp tap) {
                 inode->type = tap.type;
                 cache->sync(ctx, block);
                 cache->release(block);
+                printf("new file(inode = %d) will be placed in group %d\n", ino, gid);
                 return ino;
             }
 
