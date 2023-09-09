@@ -304,7 +304,6 @@ static usize inode_map(OpContext *ctx, Inode *inode, usize offset, bool *modifie
     u32 *addrs = get_addrs(block);
 
     if (addrs[index] == 0) {
-        // printf("间接块，保存到组%d\n", (inode->inode_no / inodePerCylinder) + 1 + index / (INODE_NUM_INDIRECT / (cylinderGroupNum - 1)));
         addrs[index] = (u32)cache->alloc(ctx, ((inode->inode_no / inodePerCylinder) + 1 + index / otherGroupMax) % cylinderGroupNum);
         printf("分配间接块%d, 块%d, 到组%d\n", index, addrs[index], (addrs[index] - recordBase) / cylinderSize);
         cache->sync(ctx, block);
@@ -355,11 +354,19 @@ static usize inode_write(OpContext *ctx, Inode *inode, u8 *src, usize offset, us
         assert(inode->entry.major == 1);
         return (usize)console_write(inode, (char *)src, (isize)count);
     }
-    // if(offset <= entry->num_bytes){
-    //     printf("offset = %d, num_byte = %d\n");
+    // printf("offset = %u, num_byte = %u\n", offset, entry->num_bytes);
+    // if(offset > entry->num_bytes){
+    //     printf("offset = %u, num_byte = %u\n", offset, entry->num_bytes);
     //     assert(offset <= entry->num_bytes);
     // }
+    // printf("end = %d\n", end);
     assert(offset <= entry->num_bytes);
+    // if(end > INODE_MAX_BYTES){
+    //     printf("end = %d\n", end);
+    //     printf("INODE_NUM_INDIRECT = %d, INODE_MAX_BLOCKS = %d, INODE_MAX_BYTES = %d\n", 
+    //             INODE_NUM_INDIRECT, INODE_MAX_BLOCKS, INODE_MAX_BYTES);
+    //     assert(end <= INODE_MAX_BYTES);
+    // }
     assert(end <= INODE_MAX_BYTES);
     assert(offset <= end);
 
@@ -379,7 +386,7 @@ static usize inode_write(OpContext *ctx, Inode *inode, u8 *src, usize offset, us
     }
 
     if (end > entry->num_bytes) {
-        entry->num_bytes = (u16)end;
+        entry->num_bytes = (u32)end;
         modified = true;
     }
     if (modified)

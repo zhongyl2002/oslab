@@ -395,11 +395,12 @@ int sys_exec() {
     return execve(p, argv, envp);
 }
 
+// 返回ms值
 u64 sys_gettime()
 {
     u64 freq = get_clock_frequency();
     u64 now = get_timestamp(),us;  // get_timestamp定义在lib14/src/aarch64/intrinsic.h
     freq /= 1000000;
     us = now/freq;
-    return us;
+    return us / 1000;
 }
