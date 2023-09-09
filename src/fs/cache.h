@@ -88,7 +88,7 @@ typedef struct BlockCache {
 
     // allocate a new zero-initialized block, by searching bitmap for a free block.
     // block number is returned.
-    usize (*alloc)(OpContext *ctx);
+    usize (*alloc)(OpContext *ctx, int gid);
 
     // mark block at `block_no` is free in bitmap.
     void (*free)(OpContext *ctx, usize block_no);

@@ -40,6 +40,7 @@
         "tuple": "c",
         "typeinfo": "c",
         "time.h": "c",
-        "syscall.h": "c"
+        "syscall.h": "c",
+        "defines.h": "c"
     }
 }

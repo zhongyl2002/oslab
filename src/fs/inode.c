@@ -284,7 +284,7 @@ static usize inode_map(OpContext *ctx, Inode *inode, usize offset, bool *modifie
 
     if (index < INODE_NUM_DIRECT) {
         if (entry->addrs[index] == 0) {
-            entry->addrs[index] = (u32)cache->alloc(ctx);
+            entry->addrs[index] = (u32)cache->alloc(ctx, (inode->inode_no / inodePerCylinder));
             set_flag(modified);
         }
 
@@ -295,7 +295,7 @@ static usize inode_map(OpContext *ctx, Inode *inode, usize offset, bool *modifie
     assert(index < INODE_NUM_INDIRECT);
 
     if (entry->indirect == 0) {
-        entry->indirect = (u32)cache->alloc(ctx);
+        entry->indirect = (u32)cache->alloc(ctx, (inode->inode_no / inodePerCylinder));
         set_flag(modified);
     }
 
@@ -303,7 +303,7 @@ static usize inode_map(OpContext *ctx, Inode *inode, usize offset, bool *modifie
     u32 *addrs = get_addrs(block);
 
     if (addrs[index] == 0) {
-        addrs[index] = (u32)cache->alloc(ctx);
+        addrs[index] = (u32)cache->alloc(ctx, (inode->inode_no / inodePerCylinder));
         cache->sync(ctx, block);
         set_flag(modified);
     }
@@ -360,6 +360,9 @@ static usize inode_write(OpContext *ctx, Inode *inode, u8 *src, usize offset, us
     bool modified = false;
     for (usize begin = offset; begin < end; begin += step, src += step) {
         usize block_no = inode_map(ctx, inode, begin, &modified);
+        if(begin == offset){
+            printf("file(inode = %d) data block will be placed in block %d(group %d)\n", inode->inode_no, block_no, (block_no - recordBase) / cylinderSize);
+        }
         Block *block = cache->acquire(block_no);
         usize index = begin % BLOCK_SIZE;
         step = MIN(end - begin, BLOCK_SIZE - index);

@@ -31,6 +31,7 @@ static int argfd(int n, i64 *pfd, struct file **pf) {
     i32 fd;
     struct file *f;
 
+    // 第n个系统调用参数
     if (argint(n, &fd) < 0)
         return -1;
     if (fd < 0 || fd >= NOFILE || (f = thiscpu()->proc->ofile[fd]) == 0)
@@ -48,6 +49,7 @@ static int argfd(int n, i64 *pfd, struct file **pf) {
  */
 static int fdalloc(struct file *f) {
     /* TODO: Your code here. */
+    // NOFILE指进程最多打开的文件数
     for (int i = 0; i < NOFILE; i++) {
         if (thiscpu()->proc->ofile[i] == 0) {
             thiscpu()->proc->ofile[i] = f;
