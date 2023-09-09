@@ -41,6 +41,7 @@
         "typeinfo": "c",
         "time.h": "c",
         "syscall.h": "c",
-        "defines.h": "c"
+        "defines.h": "c",
+        "unistd.h": "c"
     }
 }

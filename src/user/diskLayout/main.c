@@ -15,7 +15,7 @@ void printCylinder(int gid, int start){
     printf("\tcylinder %d:\n", gid);
     printf("\t\t| superBlock(%d %d-%d) | inodeBlock(%d %d-%d) | bitmapBlock(%d %d-%d) | dataBlock(%d %d-%d) |\n",
             1, start, start,
-            inodePerCylinder, start + cylinderInodeBase, start + cylinderInodeBase + cylinderInodeSize - 1,
+            cylinderInodeSize, start + cylinderInodeBase, start + cylinderInodeBase + cylinderInodeSize - 1,
             1, start + cylinderBitmapBase, start + cylinderBitmapBase + cylinderBitmapSize - 1,
             cylinderDBSize, start + cylinderDBBase, start + cylinderDBBase + cylinderDBSize - 1);
 }

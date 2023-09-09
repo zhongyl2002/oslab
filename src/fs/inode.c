@@ -303,7 +303,8 @@ static usize inode_map(OpContext *ctx, Inode *inode, usize offset, bool *modifie
     u32 *addrs = get_addrs(block);
 
     if (addrs[index] == 0) {
-        addrs[index] = (u32)cache->alloc(ctx, (inode->inode_no / inodePerCylinder));
+        // printf("间接块，保存到组%d\n", (inode->inode_no / inodePerCylinder) + 1 + index / (INODE_NUM_INDIRECT / (cylinderGroupNum - 1)));
+        addrs[index] = (u32)cache->alloc(ctx, ((inode->inode_no / inodePerCylinder) + 1 + index / (INODE_NUM_INDIRECT / (cylinderGroupNum - 1))) % cylinderGroupNum);
         cache->sync(ctx, block);
         set_flag(modified);
     }
@@ -352,7 +353,10 @@ static usize inode_write(OpContext *ctx, Inode *inode, u8 *src, usize offset, us
         assert(inode->entry.major == 1);
         return (usize)console_write(inode, (char *)src, (isize)count);
     }
-    assert(offset <= entry->num_bytes);
+    if(offset <= entry->num_bytes){
+        printf("offset = %d, num_byte = %d\n");
+        assert(offset <= entry->num_bytes);
+    }
     assert(end <= INODE_MAX_BYTES);
     assert(offset <= end);
 

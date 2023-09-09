@@ -18,6 +18,7 @@ struct xv6_stat;
 // #include "../../../inc/fs.h"
 #include "../../fs/defines.h"
 #include "../../fs/inode.h"
+#include"../../common/bitmap.h"
 
 #ifndef static_assert
 #define static_assert(a, b)                                                                        \
@@ -114,7 +115,7 @@ void printBitmap(int cyn){
     {
         for (int j = 0; j < 8; j++)
         {
-            if(testbuf[i] & (1 << (7 - j))){
+            if(testbuf[i] & (1 << j)){
                 printf("第%d(i = %d, j = %d)块被使用\n", i * 8 + j, i, j);
             }
         }
@@ -253,19 +254,19 @@ int main(int argc, char *argv[]) {
             rsect(recordBase + (i * cylinderSize) + j, testbuf);
             if(strcmp(testbuf, zeroes) != 0){
                 int byteIndex = (j / 8);
-                int bitIndex = 7 - (j % 8);
+                int bitIndex = (j % 8);
                 bitmap[byteIndex] |= (1 << bitIndex);
             }
         }
-        bitmap[(cylinderBitmapBase / 8)] |= (1 << (7 - (cylinderBitmapBase % 8)));
+        bitmap[(cylinderBitmapBase / 8)] |= (1 << (cylinderBitmapBase % 8));
         // 将所有的inode对应的bitmap设置为1
         for (int j = 0; j < cylinderInodeSize; j++){
-            bitmap[(1 + j) / 8] |= (1 << (7 - ((1 + j) % 8)));
+            bitmap[(1 + j) / 8] |= (1 << ((1 + j) % 8));
         }
         wsect(recordBase + (i * cylinderSize) + cylinderBitmapBase, bitmap);
     }
     
-    printBitmap(0);
+    printBitmap(1);
 
     exit(0);
 }

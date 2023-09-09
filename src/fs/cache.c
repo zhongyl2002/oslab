@@ -339,11 +339,13 @@ static void cache_end_op(OpContext *ctx) {
 // hint: you can use `cache_acquire`/`cache_sync` to read/write blocks.
 static usize cache_alloc(OpContext *ctx, int gid) {
     // 一个柱面组的块数
+    // i遍历每个块
     for (usize i = 0; i < sblock->num_blocks; i += BIT_PER_BLOCK) {
         usize block_no = recordBase + gid * cylinderSize + sblock->bitmap_start + (i / BIT_PER_BLOCK);
         Block *block = cache_acquire(block_no);
 
         BitmapCell *bitmap = (BitmapCell *)block->data;
+        // 遍历bitmap每个位
         for (usize j = 0; j < BIT_PER_BLOCK && i + j < sblock->num_blocks; j++) {
             if (!bitmap_get(bitmap, j)) {
                 bitmap_set(bitmap, j);
