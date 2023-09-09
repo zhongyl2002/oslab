@@ -243,6 +243,13 @@ int main(int argc, char *argv[]) {
 
     printDirEntry(rootino);
 
+    uint8_t inodebuf[BSIZE];
+    rsect(recordBase + cylinderInodeBase, inodebuf);
+    InodeEntry* ie = (InodeEntry*)inodebuf;
+    ie[0].num_links = 1;
+    ie[0].type = INODE_REGULAR;
+    wsect(recordBase + cylinderInodeBase, ie);
+
     // 设置bitmap
     for (int i = 0; i < cylinderGroupNum; i++)
     {

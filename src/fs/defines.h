@@ -44,6 +44,7 @@ typedef u16 InodeType;
 #define cylinderDBBase      28      // data block开始
 #define cylinderDBSize      908     // data block数量
 #define recordBase          64
+#define otherGroupMax       43      // 间接块其他组最多包含的数量
 // 每个柱面组inode数量 8 * 26
 #define inodePerCylinder    ((BLOCK_SIZE / sizeof(InodeEntry)) * cylinderInodeSize)
 // mkfs only

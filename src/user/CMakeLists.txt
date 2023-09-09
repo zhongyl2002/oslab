@@ -38,9 +38,9 @@ set(user_binary_list
 	ls
 	mkdir
 	cat
-	test
 	diskLayout
-	bigFileTest)
+	bigFileTest
+	totalTest)
 	# catDisk)
 
 foreach(binary ${user_binary_list})
